@@ -1,65 +1,390 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import FinancialHeader from '@/components/FinancialHeader';
+import PlayerCarousel from '@/components/PlayerCarousel';
+import ActivityFeed from '@/components/ActivityFeed';
+import { AddTransactionModal, PlayerModal, ConfirmationModal, SettingsModal } from '@/components/AdminModals';
+import LoginModal from '@/components/LoginModal';
+
+interface Transaction {
+  _id: string;
+  type: 'income' | 'expense';
+  amount: number;
+  description: string;
+  category: string;
+  date: string;
+}
+
+interface Player {
+  _id: string;
+  name: string;
+  position: string;
+  number: number;
+  imageUrl: string;
+  goals: number;
+  assists: number;
+}
+
+interface NewTransactionData {
+  amount: number;
+  description: string;
+  category: string;
+  player?: string; // Player ID
+  type?: 'income' | 'expense';
+}
+
+interface User {
+  id: string;
+  username: string;
+  role: 'superuser' | 'admin';
+}
 
 export default function Home() {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const isAdmin = !!user;
+
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Modal States
+  const [isAddFundOpen, setIsAddFundOpen] = useState(false);
+  const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
+  const [isAddPlayerOpen, setIsAddPlayerOpen] = useState(false);
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [isFabOpen, setIsFabOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+  const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
+
+  // Auth Modal States
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [transRes, playersRes] = await Promise.all([
+        fetch('/api/transactions'),
+        fetch('/api/players'),
+      ]);
+      const transData = await transRes.json();
+      const playersData = await playersRes.json();
+
+      if (transData.success) setTransactions(transData.data);
+      if (playersData.success) setPlayers(playersData.data);
+    } catch (error) {
+      console.error('Failed to fetch data', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Check for stored token on mount
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    if (storedToken && storedUser) {
+      setToken(storedToken);
+      setUser(JSON.parse(storedUser));
+    }
+    fetchData();
+  }, [fetchData]);
+
+  const handleLoginSuccess = (userData: User, authToken: string) => {
+    setUser(userData);
+    setToken(authToken);
+    localStorage.setItem('token', authToken);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setIsFabOpen(false); // Close FAB if open
+  };
+
+  const handleAddTransaction = async (data: NewTransactionData) => {
+    try {
+      const res = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Failed to add transaction', error);
+    }
+  };
+
+  const handleAddPlayer = async (formData: FormData) => {
+    try {
+      const res = await fetch('/api/players', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Failed to add player', error);
+    }
+  };
+
+  const handleUpdatePlayer = async (formData: FormData) => {
+    if (!editingPlayer) return;
+    try {
+      const res = await fetch(`/api/players/${editingPlayer._id}`, {
+        method: 'PUT',
+        body: formData,
+      });
+      if (res.ok) {
+        fetchData();
+        setEditingPlayer(null);
+      }
+    } catch (error) {
+      console.error('Failed to update player', error);
+    }
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    setTransactionToDelete(id);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleDeletePlayer = (player: Player) => {
+    setPlayerToDelete(player);
+    setIsDeleteConfirmOpen(true);
+  }
+
+  const confirmDelete = async () => {
+    if (transactionToDelete) {
+      try {
+        const res = await fetch(`/api/transactions/${transactionToDelete}`, {
+          method: 'DELETE',
+        });
+        if (res.ok) {
+          fetchData();
+          setTransactionToDelete(null);
+        }
+      } catch (error) {
+        console.error('Failed to delete transaction', error);
+      }
+    } else if (playerToDelete) {
+      try {
+        const res = await fetch(`/api/players/${playerToDelete._id}`, {
+          method: 'DELETE',
+        });
+        if (res.ok) {
+          fetchData();
+          setPlayerToDelete(null);
+        }
+      } catch (error) {
+        console.error('Failed to delete player', error);
+      }
+    }
+  };
+
+  // Calculations
+  const totalFund = transactions
+    .filter((t) => t.type === 'income')
+    .reduce((acc, curr) => acc + curr.amount, 0);
+  const totalSpent = transactions
+    .filter((t) => t.type === 'expense')
+    .reduce((acc, curr) => acc + curr.amount, 0);
+  const remaining = totalFund - totalSpent;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-primary">
+        <span className="material-icons-round animate-spin text-4xl">refresh</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <>
+      {/* Header */}
+      <header className="px-6 pt-12 pb-6 flex justify-between items-center z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-background-dark shadow-neon">
+            <span className="material-icons-round text-2xl">sports_soccer</span>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">FC Thunder</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">
+              {isAdmin ? 'Admin Dashboard' : 'Public Dashboard'}
+            </p>
+          </div>
+        </div>
+        {!isAdmin && (
+          <button
+            onClick={() => setIsLoginOpen(true)}
+            className="flex items-center gap-2 bg-surface-dark hover:bg-surface-dark/80 text-gray-400 hover:text-white px-4 py-2 rounded-full transition-all"
+          >
+            <span className="material-icons-round text-sm">lock</span>
+            <span className="text-xs font-bold">Admin Login</span>
+          </button>
+        )}
+        {isAdmin && (
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 bg-surface-dark hover:bg-red-500/10 text-gray-400 hover:text-red-500 px-4 py-2 rounded-full transition-all"
+          >
+            <span className="material-icons-round text-sm">logout</span>
+            <span className="text-xs font-bold">Logout</span>
+          </button>
+        )}
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto no-scrollbar pb-24">
+        <FinancialHeader
+          isAdmin={isAdmin}
+          totalFund={totalFund}
+          totalSpent={totalSpent}
+          remaining={remaining}
+          onAddFund={() => setIsAddFundOpen(true)}
+          onAddExpense={() => setIsAddExpenseOpen(true)}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+        <PlayerCarousel
+          isAdmin={isAdmin}
+          players={players}
+          onAddPlayer={() => setIsAddPlayerOpen(true)}
+          onEditPlayer={(player) => setEditingPlayer(player)}
+          onDeletePlayer={handleDeletePlayer}
+        />
+
+        <ActivityFeed
+          isAdmin={isAdmin}
+          transactions={transactions}
+          onDeleteTransaction={handleDeleteTransaction}
+        />
+
+
       </main>
-    </div>
+
+
+
+      {/* Admin Footer Navigation */}
+      {isAdmin && (
+        <nav className="fixed bottom-0 w-full bg-background-light dark:bg-background-dark/95 backdrop-blur-lg border-t border-gray-200 dark:border-primary/10 pb-6 pt-3 px-6 z-50 max-w-md">
+          <div className="flex justify-between items-end mx-auto">
+            <button className="flex flex-col items-center gap-1 text-primary w-14">
+              <span className="material-icons-round text-2xl">dashboard</span>
+              <span className="text-[10px] font-medium">Dashboard</span>
+            </button>
+
+
+
+            {/* Quick Add FAB in Footer */}
+            <div className="relative -top-5 flex flex-col items-center">
+              {/* Expanded Options */}
+              {isFabOpen && (
+                <div className="absolute bottom-16 flex flex-row gap-4 items-center mb-2 animate-in slide-in-from-bottom-5 fade-in duration-200">
+                  {/* Add Fund (Green) */}
+                  <button
+                    onClick={() => {
+                      setIsAddFundOpen(true);
+                      setIsFabOpen(false);
+                    }}
+                    className="w-28 flex items-center justify-center gap-2 bg-surface-dark border border-primary text-primary px-4 py-2 rounded-full shadow-lg hover:bg-primary/10 transition-colors whitespace-nowrap"
+                  >
+                    <span className="material-icons-round text-lg">add_circle</span>
+                    <span className="text-xs font-bold">Fund</span>
+                  </button>
+
+                  {/* Add Expense (Red) */}
+                  <button
+                    onClick={() => {
+                      setIsAddExpenseOpen(true);
+                      setIsFabOpen(false);
+                    }}
+                    className="w-28 flex items-center justify-center gap-2 bg-surface-dark border border-red-500 text-red-500 px-4 py-2 rounded-full shadow-lg hover:bg-red-500/10 transition-colors whitespace-nowrap"
+                  >
+                    <span className="material-icons-round text-lg">remove_circle</span>
+                    <span className="text-xs font-bold">Spend</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Main FAB */}
+              <button
+                onClick={() => setIsFabOpen(!isFabOpen)}
+                className={`w-14 h-14 bg-surface-dark border border-primary rounded-full flex items-center justify-center text-primary shadow-lg shadow-primary/20 hover:scale-105 transition-all duration-300 ${isFabOpen ? 'rotate-45 bg-primary text-background-dark' : ''
+                  }`}
+              >
+                <span className="material-icons-round text-3xl">add</span>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="flex flex-col items-center gap-1 text-gray-400 hover:text-white transition-colors w-14"
+            >
+              <span className="material-icons-round text-2xl">settings</span>
+              <span className="text-[10px] font-medium">Settings</span>
+            </button>
+
+
+          </div>
+        </nav>
+      )}
+
+      {/* Modals */}
+      <AddTransactionModal
+        isOpen={isAddFundOpen}
+        closeModal={() => setIsAddFundOpen(false)}
+        type="income"
+        onSave={handleAddTransaction}
+        players={players}
+      />
+      <AddTransactionModal
+        isOpen={isAddExpenseOpen}
+        closeModal={() => setIsAddExpenseOpen(false)}
+        type="expense"
+        onSave={handleAddTransaction}
+      />
+      <PlayerModal
+        isOpen={isAddPlayerOpen || !!editingPlayer}
+        closeModal={() => {
+          setIsAddPlayerOpen(false);
+          setEditingPlayer(null);
+        }}
+        onSave={editingPlayer ? handleUpdatePlayer : handleAddPlayer}
+        player={editingPlayer}
+      />
+      <ConfirmationModal
+        isOpen={isDeleteConfirmOpen}
+        closeModal={() => {
+          setIsDeleteConfirmOpen(false);
+          setTransactionToDelete(null);
+          setPlayerToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title={transactionToDelete ? "Delete Transaction" : "Delete Player"}
+        message={transactionToDelete
+          ? "Are you sure you want to delete this record? This action cannot be undone."
+          : `Are you sure you want to delete ${playerToDelete?.name}? This action cannot be undone.`
+        }
+      />
+      <LoginModal
+        isOpen={isLoginOpen}
+        closeModal={() => setIsLoginOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        closeModal={() => setIsSettingsOpen(false)}
+        currentUser={user}
+        token={token}
+      />
+    </>
   );
 }
