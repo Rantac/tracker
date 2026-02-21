@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import FinancialHeader from '@/components/FinancialHeader';
 import PlayerCarousel from '@/components/PlayerCarousel';
 import ActivityFeed from '@/components/ActivityFeed';
-import { AddTransactionModal, PlayerModal, ConfirmationModal, SettingsModal } from '@/components/AdminModals';
+import EventFeed from '@/components/EventFeed';
+import { AddTransactionModal, PlayerModal, ConfirmationModal, SettingsModal, EventModal, EditEventModal } from '@/components/AdminModals';
 import LoginModal from '@/components/LoginModal';
 
 interface Transaction {
@@ -24,6 +25,17 @@ interface Player {
   imageUrl: string;
   goals: number;
   assists: number;
+}
+
+interface Event {
+  _id: string;
+  title: string;
+  description: string;
+  startTime: string;
+  location: string;
+  createdBy: string;
+  imageUrl?: string;
+  status?: string;
 }
 
 interface NewTransactionData {
@@ -47,33 +59,39 @@ export default function Home() {
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal States
   const [isAddFundOpen, setIsAddFundOpen] = useState(false);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [isAddPlayerOpen, setIsAddPlayerOpen] = useState(false);
+  const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
-
+  const [eventToDelete, setEventToDelete] = useState<string | null>(null);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   // Auth Modal States
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [transRes, playersRes] = await Promise.all([
+      const [transRes, playersRes, eventsRes] = await Promise.all([
         fetch('/api/transactions'),
         fetch('/api/players'),
+        fetch('/api/events'),
       ]);
       const transData = await transRes.json();
       const playersData = await playersRes.json();
+      const eventsData = await eventsRes.json();
 
       if (transData.success) setTransactions(transData.data);
       if (playersData.success) setPlayers(playersData.data);
+      if (eventsData.success) setEvents(eventsData.data);
     } catch (error) {
       console.error('Failed to fetch data', error);
     } finally {
@@ -162,6 +180,38 @@ export default function Home() {
     setIsDeleteConfirmOpen(true);
   }
 
+  const handleAddEvent = async (formData: FormData) => {
+    try {
+      const res = await fetch('/api/events', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) fetchData();
+    } catch (error) {
+      console.error('Failed to add event', error);
+    }
+  };
+
+  const handleDeleteEvent = (id: string) => {
+    setEventToDelete(id);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleEditEvent = async (id: string, data: FormData | Record<string, string>) => {
+    try {
+      const res = data instanceof FormData
+        ? await fetch(`/api/events/${id}`, { method: 'PATCH', body: data })
+        : await fetch(`/api/events/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          });
+      if (res.ok) fetchData();
+    } catch (error) {
+      console.error('Failed to update event', error);
+    }
+  };
+
   const confirmDelete = async () => {
     if (transactionToDelete) {
       try {
@@ -186,6 +236,18 @@ export default function Home() {
         }
       } catch (error) {
         console.error('Failed to delete player', error);
+      }
+    } else if (eventToDelete) {
+      try {
+        const res = await fetch(`/api/events/${eventToDelete}`, {
+          method: 'DELETE',
+        });
+        if (res.ok) {
+          fetchData();
+          setEventToDelete(null);
+        }
+      } catch (error) {
+        console.error('Failed to delete event', error);
       }
     }
   };
@@ -216,7 +278,7 @@ export default function Home() {
             <span className="material-icons-round text-2xl">sports_soccer</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">FC Thunder</h1>
+            <h1 className="text-xl font-bold tracking-tight">FC Hub</h1>
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">
               {isAdmin ? 'Admin Dashboard' : 'Public Dashboard'}
             </p>
@@ -251,6 +313,13 @@ export default function Home() {
           remaining={remaining}
           onAddFund={() => setIsAddFundOpen(true)}
           onAddExpense={() => setIsAddExpenseOpen(true)}
+        />
+
+        <EventFeed
+          isAdmin={isAdmin}
+          events={events}
+          onDeleteEvent={handleDeleteEvent}
+          onEditEvent={(event) => setEditingEvent(event)}
         />
 
         <PlayerCarousel
@@ -311,6 +380,19 @@ export default function Home() {
                     <span className="material-icons-round text-lg">remove_circle</span>
                     <span className="text-xs font-bold">Spend</span>
                   </button>
+
+                  {/* Add Event (Blue) */}
+                  <button
+                    onClick={() => {
+                      setIsAddEventOpen(true);
+                      setIsFabOpen(false);
+                    }}
+                    className="w-28 flex items-center justify-center gap-2 bg-surface-dark border border-blue-400 text-blue-400 px-4 py-2 rounded-full shadow-lg hover:bg-blue-400/10 transition-colors whitespace-nowrap"
+                  >
+                    <span className="material-icons-round text-lg">event</span>
+                    <span className="text-xs font-bold">Event</span>
+                  </button>
+
                 </div>
               )}
 
@@ -366,12 +448,15 @@ export default function Home() {
           setIsDeleteConfirmOpen(false);
           setTransactionToDelete(null);
           setPlayerToDelete(null);
+          setEventToDelete(null);
         }}
         onConfirm={confirmDelete}
-        title={transactionToDelete ? "Delete Transaction" : "Delete Player"}
+        title={transactionToDelete ? 'Delete Transaction' : playerToDelete ? 'Delete Player' : 'Delete Event'}
         message={transactionToDelete
-          ? "Are you sure you want to delete this record? This action cannot be undone."
-          : `Are you sure you want to delete ${playerToDelete?.name}? This action cannot be undone.`
+          ? 'Are you sure you want to delete this record? This action cannot be undone.'
+          : playerToDelete
+          ? `Are you sure you want to delete ${playerToDelete?.name}? This action cannot be undone.`
+          : 'Are you sure you want to delete this? This action cannot be undone.'
         }
       />
       <LoginModal
@@ -384,6 +469,18 @@ export default function Home() {
         closeModal={() => setIsSettingsOpen(false)}
         currentUser={user}
         token={token}
+      />
+      <EventModal
+        isOpen={isAddEventOpen}
+        closeModal={() => setIsAddEventOpen(false)}
+        onSave={handleAddEvent}
+        createdBy={user?.username ?? ''}
+      />
+      <EditEventModal
+        isOpen={!!editingEvent}
+        closeModal={() => setEditingEvent(null)}
+        onSave={handleEditEvent}
+        event={editingEvent}
       />
     </>
   );

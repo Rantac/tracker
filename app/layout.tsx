@@ -9,7 +9,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'FC Thunder Tracker',
+  title: 'FC Hub',
   description: 'Team financial and player tracking dashboard',
 };
 
