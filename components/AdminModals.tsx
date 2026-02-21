@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Fragment } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Dialog, Transition, TransitionChild } from '@headlessui/react';
 
 interface ModalProps {
@@ -333,6 +333,183 @@ export function ConfirmationModal({ isOpen, closeModal, onConfirm, title, messag
                     </button>
                 </div>
             </div>
+        </BaseModal>
+    );
+}
+
+
+interface EventData {
+    title: string;
+    description: string;
+    startTime: string;
+    location: string;
+    createdBy: string;
+}
+
+interface EventModalProps {
+    isOpen: boolean;
+    closeModal: () => void;
+    onSave: (formData: FormData) => Promise<void>;
+    createdBy: string;
+}
+
+export function EventModal({ isOpen, closeModal, onSave, createdBy }: EventModalProps) {
+    const [fields, setFields] = useState({ title: '', description: '', startTime: '', location: '' });
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [preview, setPreview] = useState<string | null>(null);
+
+    const handleImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] ?? null;
+        setImageFile(file);
+        setPreview(file ? URL.createObjectURL(file) : null);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const fd = new FormData();
+        fd.append('title', fields.title);
+        fd.append('description', fields.description);
+        fd.append('startTime', fields.startTime);
+        fd.append('location', fields.location);
+        fd.append('createdBy', createdBy);
+        if (imageFile) fd.append('image', imageFile);
+        await onSave(fd);
+        setFields({ title: '', description: '', startTime: '', location: '' });
+        setImageFile(null);
+        setPreview(null);
+        closeModal();
+    };
+
+    return (
+        <BaseModal isOpen={isOpen} closeModal={closeModal} title="Create Event">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-400">Title</label>
+                    <input type="text" required placeholder="e.g. Match vs City FC"
+                        className="w-full bg-background-dark border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary"
+                        value={fields.title} onChange={(e) => setFields({ ...fields, title: e.target.value })} />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-400">Description</label>
+                    <textarea required rows={3} placeholder="Event details..."
+                        className="w-full bg-background-dark border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary resize-none"
+                        value={fields.description} onChange={(e) => setFields({ ...fields, description: e.target.value })} />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-400">Date & Time</label>
+                    <input type="datetime-local" required
+                        className="w-full bg-background-dark border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary"
+                        value={fields.startTime} onChange={(e) => setFields({ ...fields, startTime: e.target.value })} />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-400">Location</label>
+                    <input type="text" required placeholder="e.g. Thunder Stadium, Main St"
+                        className="w-full bg-background-dark border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary"
+                        value={fields.location} onChange={(e) => setFields({ ...fields, location: e.target.value })} />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Image (optional)</label>
+                    {preview && <img src={preview} alt="preview" className="w-full h-32 object-cover rounded-lg mb-2" />}
+                    <label className="flex items-center gap-2 cursor-pointer w-full bg-background-dark border border-dashed border-gray-600 hover:border-primary rounded-lg px-3 py-2 text-gray-400 hover:text-primary transition-colors">
+                        <span className="material-icons-round text-base">upload</span>
+                        <span className="text-sm">{imageFile ? imageFile.name : 'Choose image...'}</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={handleImage} />
+                    </label>
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                    <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white">Cancel</button>
+                    <button type="submit" className="px-4 py-2 text-sm font-bold bg-primary text-background-dark rounded-lg hover:bg-primary/90">Create Event</button>
+                </div>
+            </form>
+        </BaseModal>
+    );
+}
+
+interface EditEventModalProps {
+    isOpen: boolean;
+    closeModal: () => void;
+    onSave: (id: string, formData: FormData) => Promise<void>;
+    event: { _id: string; title: string; description: string; startTime: string; location: string; imageUrl?: string } | null;
+}
+
+export function EditEventModal({ isOpen, closeModal, onSave, event }: EditEventModalProps) {
+    const [fields, setFields] = useState({ title: '', description: '', startTime: '', location: '' });
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [preview, setPreview] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (event) {
+            setFields({
+                title: event.title,
+                description: event.description,
+                startTime: event.startTime.slice(0, 16),
+                location: event.location,
+            });
+            setPreview(event.imageUrl || null);
+            setImageFile(null);
+        }
+    }, [event]);
+
+    const handleImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] ?? null;
+        setImageFile(file);
+        setPreview(file ? URL.createObjectURL(file) : (event?.imageUrl || null));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!event) return;
+        const fd = new FormData();
+        fd.append('title', fields.title);
+        fd.append('description', fields.description);
+        fd.append('startTime', fields.startTime);
+        fd.append('location', fields.location);
+        if (imageFile) fd.append('image', imageFile);
+        await onSave(event._id, fd);
+        closeModal();
+    };
+
+    return (
+        <BaseModal isOpen={isOpen} closeModal={closeModal} title="Edit Event">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-400">Title</label>
+                    <input type="text" required
+                        className="w-full bg-background-dark border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary"
+                        value={fields.title} onChange={(e) => setFields({ ...fields, title: e.target.value })} />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-400">Description</label>
+                    <textarea rows={3}
+                        className="w-full bg-background-dark border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary resize-none"
+                        value={fields.description} onChange={(e) => setFields({ ...fields, description: e.target.value })} />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-400">Date & Time</label>
+                    <input type="datetime-local" required
+                        className="w-full bg-background-dark border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary"
+                        value={fields.startTime} onChange={(e) => setFields({ ...fields, startTime: e.target.value })} />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-400">Location</label>
+                    <input type="text" required
+                        className="w-full bg-background-dark border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary"
+                        value={fields.location} onChange={(e) => setFields({ ...fields, location: e.target.value })} />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Image</label>
+                    {preview && <img src={preview} alt="preview" className="w-full h-32 object-cover rounded-lg mb-2" />}
+                    <label className="flex items-center gap-2 cursor-pointer w-full bg-background-dark border border-dashed border-gray-600 hover:border-primary rounded-lg px-3 py-2 text-gray-400 hover:text-primary transition-colors">
+                        <span className="material-icons-round text-base">upload</span>
+                        <span className="text-sm">{imageFile ? imageFile.name : 'Replace image...'}</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={handleImage} />
+                    </label>
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                    <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white">Cancel</button>
+                    <button type="submit" className="px-4 py-2 text-sm font-bold bg-primary text-background-dark rounded-lg hover:bg-primary/90">Save Changes</button>
+                </div>
+            </form>
         </BaseModal>
     );
 }
