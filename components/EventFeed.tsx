@@ -11,6 +11,7 @@ interface Event {
     location: string;
     createdBy: string;
     imageUrl?: string;
+    status?: string;
 }
 
 interface EventFeedProps {
@@ -151,7 +152,19 @@ export default function EventFeed({ isAdmin, events, onDeleteEvent, onEditEvent 
                     </div>
                     {/* Title + day + time */}
                     <div className="flex-1 min-w-0 pt-1">
-                        <p className="text-base font-black text-white leading-tight truncate">{event.title}</p>
+                        <div className="flex items-start gap-2">
+                            <p className="text-base font-black text-white leading-tight truncate flex-1">{event.title}</p>
+                            {(() => {
+                                const s = event.status || 'planning';
+                                return (
+                                    <span className={`flex-shrink-0 text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                                        s === 'confirmed' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                                        s === 'cancelled' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                                        'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                                    }`}>{s}</span>
+                                );
+                            })()}
+                        </div>
                         <p className="text-sm font-semibold text-gray-300 mt-1">{format(eventDate, 'EEEE')}</p>
                         <div className="flex items-center gap-1.5 mt-1">
                             <span className="material-icons-round text-sm text-primary">schedule</span>

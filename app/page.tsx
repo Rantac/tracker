@@ -35,6 +35,7 @@ interface Event {
   location: string;
   createdBy: string;
   imageUrl?: string;
+  status?: string;
 }
 
 interface NewTransactionData {
@@ -73,7 +74,6 @@ export default function Home() {
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
   const [eventToDelete, setEventToDelete] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-
   // Auth Modal States
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -197,12 +197,15 @@ export default function Home() {
     setIsDeleteConfirmOpen(true);
   };
 
-  const handleEditEvent = async (id: string, formData: FormData) => {
+  const handleEditEvent = async (id: string, data: FormData | Record<string, string>) => {
     try {
-      const res = await fetch(`/api/events/${id}`, {
-        method: 'PATCH',
-        body: formData,
-      });
+      const res = data instanceof FormData
+        ? await fetch(`/api/events/${id}`, { method: 'PATCH', body: data })
+        : await fetch(`/api/events/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          });
       if (res.ok) fetchData();
     } catch (error) {
       console.error('Failed to update event', error);
@@ -275,7 +278,7 @@ export default function Home() {
             <span className="material-icons-round text-2xl">sports_soccer</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">FC Thunder</h1>
+            <h1 className="text-xl font-bold tracking-tight">FC Hub</h1>
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">
               {isAdmin ? 'Admin Dashboard' : 'Public Dashboard'}
             </p>
@@ -389,6 +392,7 @@ export default function Home() {
                     <span className="material-icons-round text-lg">event</span>
                     <span className="text-xs font-bold">Event</span>
                   </button>
+
                 </div>
               )}
 
@@ -447,12 +451,12 @@ export default function Home() {
           setEventToDelete(null);
         }}
         onConfirm={confirmDelete}
-        title={transactionToDelete ? "Delete Transaction" : playerToDelete ? "Delete Player" : "Delete Event"}
+        title={transactionToDelete ? 'Delete Transaction' : playerToDelete ? 'Delete Player' : 'Delete Event'}
         message={transactionToDelete
-          ? "Are you sure you want to delete this record? This action cannot be undone."
+          ? 'Are you sure you want to delete this record? This action cannot be undone.'
           : playerToDelete
           ? `Are you sure you want to delete ${playerToDelete?.name}? This action cannot be undone.`
-          : "Are you sure you want to delete this event? This action cannot be undone."
+          : 'Are you sure you want to delete this? This action cannot be undone.'
         }
       />
       <LoginModal

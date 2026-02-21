@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
+export type EventStatus = 'planning' | 'confirmed' | 'cancelled';
+
 export interface IEvent extends Document {
     title: string;
     description: string;
@@ -7,6 +9,7 @@ export interface IEvent extends Document {
     location: string;
     createdBy: string;
     imageUrl?: string;
+    status: EventStatus;
 }
 
 const EventSchema: Schema = new Schema(
@@ -17,6 +20,7 @@ const EventSchema: Schema = new Schema(
         location: { type: String, required: true },
         createdBy: { type: String, required: true },
         imageUrl: { type: String, default: '' },
+        status: { type: String, enum: ['planning', 'confirmed', 'cancelled'], default: 'planning' },
     },
     { timestamps: true }
 );

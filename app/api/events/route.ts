@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
         const startTime = formData.get('startTime') as string;
         const location = formData.get('location') as string;
         const createdBy = formData.get('createdBy') as string;
+        const status = (formData.get('status') as string) || 'planning';
         const file = formData.get('image') as File | null;
 
         let imageUrl = '';
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
             imageUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${fileName}` : `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${R2_BUCKET}/${fileName}`;
         }
 
-        const event = await Event.create({ title, description, startTime, location, createdBy, imageUrl });
+        const event = await Event.create({ title, description, startTime, location, createdBy, imageUrl, status });
         return NextResponse.json({ success: true, data: event }, { status: 201 });
     } catch (error) {
         console.error('Error creating event:', error);

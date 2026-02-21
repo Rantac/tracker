@@ -354,7 +354,7 @@ interface EventModalProps {
 }
 
 export function EventModal({ isOpen, closeModal, onSave, createdBy }: EventModalProps) {
-    const [fields, setFields] = useState({ title: '', description: '', startTime: '', location: '' });
+    const [fields, setFields] = useState({ title: '', description: '', startTime: '', location: '', status: 'planning' });
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
 
@@ -371,10 +371,11 @@ export function EventModal({ isOpen, closeModal, onSave, createdBy }: EventModal
         fd.append('description', fields.description);
         fd.append('startTime', fields.startTime);
         fd.append('location', fields.location);
+        fd.append('status', fields.status);
         fd.append('createdBy', createdBy);
         if (imageFile) fd.append('image', imageFile);
         await onSave(fd);
-        setFields({ title: '', description: '', startTime: '', location: '' });
+        setFields({ title: '', description: '', startTime: '', location: '', status: 'planning' });
         setImageFile(null);
         setPreview(null);
         closeModal();
@@ -408,6 +409,16 @@ export function EventModal({ isOpen, closeModal, onSave, createdBy }: EventModal
                         value={fields.location} onChange={(e) => setFields({ ...fields, location: e.target.value })} />
                 </div>
                 <div>
+                    <label className="block text-sm font-medium text-gray-400">Status</label>
+                    <select
+                        className="w-full bg-background-dark border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary"
+                        value={fields.status} onChange={(e) => setFields({ ...fields, status: e.target.value })}>
+                        <option value="planning">Planning</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1">Image (optional)</label>
                     {preview && <img src={preview} alt="preview" className="w-full h-32 object-cover rounded-lg mb-2" />}
                     <label className="flex items-center gap-2 cursor-pointer w-full bg-background-dark border border-dashed border-gray-600 hover:border-primary rounded-lg px-3 py-2 text-gray-400 hover:text-primary transition-colors">
@@ -428,12 +439,12 @@ export function EventModal({ isOpen, closeModal, onSave, createdBy }: EventModal
 interface EditEventModalProps {
     isOpen: boolean;
     closeModal: () => void;
-    onSave: (id: string, formData: FormData) => Promise<void>;
-    event: { _id: string; title: string; description: string; startTime: string; location: string; imageUrl?: string } | null;
+    onSave: (id: string, data: FormData | Record<string, string>) => Promise<void>;
+    event: { _id: string; title: string; description: string; startTime: string; location: string; imageUrl?: string; status?: string } | null;
 }
 
 export function EditEventModal({ isOpen, closeModal, onSave, event }: EditEventModalProps) {
-    const [fields, setFields] = useState({ title: '', description: '', startTime: '', location: '' });
+    const [fields, setFields] = useState({ title: '', description: '', startTime: '', location: '', status: 'planning' });
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
 
@@ -444,6 +455,7 @@ export function EditEventModal({ isOpen, closeModal, onSave, event }: EditEventM
                 description: event.description,
                 startTime: event.startTime.slice(0, 16),
                 location: event.location,
+                status: event.status || 'planning',
             });
             setPreview(event.imageUrl || null);
             setImageFile(null);
@@ -459,13 +471,24 @@ export function EditEventModal({ isOpen, closeModal, onSave, event }: EditEventM
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!event) return;
-        const fd = new FormData();
-        fd.append('title', fields.title);
-        fd.append('description', fields.description);
-        fd.append('startTime', fields.startTime);
-        fd.append('location', fields.location);
-        if (imageFile) fd.append('image', imageFile);
-        await onSave(event._id, fd);
+        if (imageFile) {
+            const fd = new FormData();
+            fd.append('title', fields.title);
+            fd.append('description', fields.description);
+            fd.append('startTime', fields.startTime);
+            fd.append('location', fields.location);
+            fd.append('status', fields.status);
+            fd.append('image', imageFile);
+            await onSave(event._id, fd);
+        } else {
+            await onSave(event._id, {
+                title: fields.title,
+                description: fields.description,
+                startTime: fields.startTime,
+                location: fields.location,
+                status: fields.status,
+            });
+        }
         closeModal();
     };
 
@@ -495,6 +518,16 @@ export function EditEventModal({ isOpen, closeModal, onSave, event }: EditEventM
                     <input type="text" required
                         className="w-full bg-background-dark border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary"
                         value={fields.location} onChange={(e) => setFields({ ...fields, location: e.target.value })} />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-400">Status</label>
+                    <select
+                        className="w-full bg-background-dark border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary"
+                        value={fields.status} onChange={(e) => setFields({ ...fields, status: e.target.value })}>
+                        <option value="planning">Planning</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1">Image</label>
