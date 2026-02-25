@@ -440,11 +440,11 @@ interface EditEventModalProps {
     isOpen: boolean;
     closeModal: () => void;
     onSave: (id: string, data: FormData | Record<string, string>) => Promise<void>;
-    event: { _id: string; title: string; description: string; startTime: string; location: string; imageUrl?: string; status?: string } | null;
+    event: { _id: string; title: string; description: string; startTime: string; location: string; imageUrl?: string; status?: string; googleMapUrl?: string } | null;
 }
 
 export function EditEventModal({ isOpen, closeModal, onSave, event }: EditEventModalProps) {
-    const [fields, setFields] = useState({ title: '', description: '', startTime: '', location: '', status: 'planning' });
+    const [fields, setFields] = useState({ title: '', description: '', startTime: '', location: '', status: 'planning', googleMapUrl: '' });
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
 
@@ -460,6 +460,7 @@ export function EditEventModal({ isOpen, closeModal, onSave, event }: EditEventM
                 startTime: localISO,
                 location: event.location,
                 status: event.status || 'planning',
+                googleMapUrl: event.googleMapUrl || '',
             });
             setPreview(event.imageUrl || null);
             setImageFile(null);
@@ -482,6 +483,7 @@ export function EditEventModal({ isOpen, closeModal, onSave, event }: EditEventM
             fd.append('startTime', fields.startTime);
             fd.append('location', fields.location);
             fd.append('status', fields.status);
+            fd.append('googleMapUrl', fields.googleMapUrl);
             fd.append('image', imageFile);
             await onSave(event._id, fd);
         } else {
@@ -491,6 +493,7 @@ export function EditEventModal({ isOpen, closeModal, onSave, event }: EditEventM
                 startTime: fields.startTime,
                 location: fields.location,
                 status: fields.status,
+                googleMapUrl: fields.googleMapUrl,
             });
         }
         closeModal();
@@ -532,6 +535,12 @@ export function EditEventModal({ isOpen, closeModal, onSave, event }: EditEventM
                         <option value="confirmed">Confirmed</option>
                         <option value="cancelled">Cancelled</option>
                     </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-400">Google Map URL <span className="text-gray-600 font-normal">(optional)</span></label>
+                    <input type="url" placeholder="https://maps.google.com/..."
+                        className="w-full bg-background-dark border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary"
+                        value={fields.googleMapUrl} onChange={(e) => setFields({ ...fields, googleMapUrl: e.target.value })} />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1">Image</label>
