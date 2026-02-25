@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { format, isPast } from 'date-fns';
+import Link from 'next/link';
 
 interface Event {
     _id: string;
@@ -200,6 +201,17 @@ export default function EventFeed({ isAdmin, events, onDeleteEvent, onEditEvent 
                     </a>
                 </div>
 
+                {/* ── View Details link ── */}
+                <div className="pt-3 border-t border-white/5 mt-3">
+                    <Link
+                        href={`/events/${event._id}`}
+                        className="flex items-center justify-center gap-1.5 w-full py-2 rounded-xl bg-primary/8 border border-primary/15 text-xs font-bold text-primary hover:bg-primary/15 transition-colors"
+                    >
+                        <span className="material-icons-round text-sm">open_in_full</span>
+                        View Details & Share
+                    </Link>
+                </div>
+
                 </div>{/* end p-4 */}
             </div>
         );
@@ -214,13 +226,13 @@ export default function EventFeed({ isAdmin, events, onDeleteEvent, onEditEvent 
                     <span className="text-[8px] font-bold uppercase text-gray-500 leading-none">{format(eventDate, 'MMM')}</span>
                     <span className="text-sm font-black text-gray-400 leading-none">{format(eventDate, 'd')}</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-gray-400 truncate">{event.title}</p>
+                <Link href={`/events/${event._id}`} className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-gray-400 truncate hover:text-gray-300 transition-colors">{event.title}</p>
                     <p className="text-[10px] text-gray-600 flex items-center gap-1 mt-0.5">
                         <span className="material-icons-round text-xs">location_on</span>
                         <span className="truncate">{event.location}</span>
                     </p>
-                </div>
+                </Link>
                 <span className="text-[10px] text-gray-600 flex-shrink-0">{format(eventDate, 'h:mm a')}</span>
                 {isAdmin && (
                     <button

@@ -10,6 +10,7 @@ export interface IEvent extends Document {
     createdBy: string;
     imageUrl?: string;
     status: EventStatus;
+    googleMapUrl?: string;
 }
 
 const EventSchema: Schema = new Schema(
@@ -21,6 +22,7 @@ const EventSchema: Schema = new Schema(
         createdBy: { type: String, required: true },
         imageUrl: { type: String, default: '' },
         status: { type: String, enum: ['planning', 'confirmed', 'cancelled'], default: 'planning' },
+        googleMapUrl: { type: String, default: '' },
     },
     { timestamps: true }
 );

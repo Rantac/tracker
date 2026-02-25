@@ -5,6 +5,23 @@ import { r2Client, R2_BUCKET, R2_PUBLIC_URL } from '@/lib/r2';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 
+export async function GET(
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        await dbConnect();
+        const { id } = await params;
+        const event = await Event.findById(id);
+        if (!event) {
+            return NextResponse.json({ success: false, error: 'Event not found' }, { status: 404 });
+        }
+        return NextResponse.json({ success: true, data: event });
+    } catch (error) {
+        return NextResponse.json({ success: false, error: String(error) }, { status: 400 });
+    }
+}
+
 export async function PATCH(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -30,6 +47,8 @@ export async function PATCH(
             if (location) updateData.location = location;
             if (startTime) updateData.startTime = new Date(startTime);
             if (status) updateData.status = status;
+            const googleMapUrl = formData.get('googleMapUrl') as string | null;
+            if (googleMapUrl !== null) updateData.googleMapUrl = googleMapUrl;
 
             if (file && file.size > 0) {
                 const buffer = Buffer.from(await file.arrayBuffer());
@@ -51,6 +70,7 @@ export async function PATCH(
             if (body.location !== undefined) updateData.location = body.location;
             if (body.startTime) updateData.startTime = new Date(body.startTime);
             if (body.status) updateData.status = body.status;
+            if (body.googleMapUrl !== undefined) updateData.googleMapUrl = body.googleMapUrl;
         }
 
         const updatedEvent = await Event.findByIdAndUpdate(id, { $set: updateData }, { new: true });
