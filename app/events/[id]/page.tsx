@@ -160,6 +160,7 @@ function AdminMapEditor({ eventId, currentUrl, onSaved }: { eventId: string; cur
     const [editing, setEditing] = useState(false);
     const [value, setValue] = useState(currentUrl);
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -172,16 +173,22 @@ function AdminMapEditor({ eventId, currentUrl, onSaved }: { eventId: string; cur
 
     const handleSave = async () => {
         setSaving(true);
+        setError('');
         try {
             const res = await fetch(`/api/events/${eventId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ googleMapUrl: value }),
             });
-            if (res.ok) {
+            const data = await res.json();
+            if (res.ok && data.success) {
                 onSaved(value);
                 setEditing(false);
+            } else {
+                setError(data.error || 'Failed to save');
             }
+        } catch {
+            setError('Network error');
         } finally {
             setSaving(false);
         }
@@ -214,6 +221,7 @@ function AdminMapEditor({ eventId, currentUrl, onSaved }: { eventId: string; cur
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false); }}
             />
             <p className="text-[10px] text-gray-600">Paste any Google Maps URL or share link</p>
+            {error && <p className="text-[11px] text-red-400 font-medium">{error}</p>}
             <div className="flex gap-2 justify-end">
                 <button
                     onClick={() => { setEditing(false); setValue(currentUrl); }}

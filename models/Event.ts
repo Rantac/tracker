@@ -27,7 +27,10 @@ const EventSchema: Schema = new Schema(
     { timestamps: true }
 );
 
-const Event: Model<IEvent> =
-    mongoose.models.Event || mongoose.model<IEvent>('Event', EventSchema);
+if (mongoose.models.Event) {
+    delete (mongoose.models as Record<string, unknown>).Event;
+}
+
+const Event: Model<IEvent> = mongoose.model<IEvent>('Event', EventSchema);
 
 export default Event;

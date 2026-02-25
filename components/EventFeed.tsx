@@ -13,6 +13,7 @@ interface Event {
     createdBy: string;
     imageUrl?: string;
     status?: string;
+    googleMapUrl?: string;
 }
 
 interface EventFeedProps {
