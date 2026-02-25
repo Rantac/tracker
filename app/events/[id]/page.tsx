@@ -289,8 +289,18 @@ export default function EventDetailPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen text-primary">
-                <span className="material-icons-round animate-spin text-4xl">refresh</span>
+            <div className="flex flex-col items-center justify-center min-h-screen gap-6 bg-background-dark">
+                <div className="relative flex items-center justify-center">
+                    <div className="absolute w-20 h-20 rounded-full border-2 border-primary/20 animate-ping" />
+                    <div className="absolute w-20 h-20 rounded-full border-2 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+                    <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center shadow-neon">
+                        <span className="material-icons-round text-background-dark text-2xl">event</span>
+                    </div>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                    <p className="text-white font-black text-lg tracking-tight">FC Hub</p>
+                    <p className="text-gray-500 text-xs font-medium uppercase tracking-widest">Loading event...</p>
+                </div>
             </div>
         );
     }
