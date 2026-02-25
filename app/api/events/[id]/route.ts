@@ -48,7 +48,7 @@ export async function PATCH(
             if (startTime) updateData.startTime = new Date(startTime);
             if (status) updateData.status = status;
             const googleMapUrl = formData.get('googleMapUrl') as string | null;
-            if (googleMapUrl !== null) updateData.googleMapUrl = googleMapUrl;
+            if (googleMapUrl !== null && googleMapUrl !== '') updateData.googleMapUrl = googleMapUrl;
 
             if (file && file.size > 0) {
                 const buffer = Buffer.from(await file.arrayBuffer());
@@ -70,7 +70,7 @@ export async function PATCH(
             if (body.location !== undefined) updateData.location = body.location;
             if (body.startTime) updateData.startTime = new Date(body.startTime);
             if (body.status) updateData.status = body.status;
-            if (body.googleMapUrl !== undefined) updateData.googleMapUrl = body.googleMapUrl;
+            if (body.googleMapUrl !== undefined && body.googleMapUrl !== '') updateData.googleMapUrl = body.googleMapUrl;
         }
 
         const updatedEvent = await Event.findByIdAndUpdate(id, { $set: updateData }, { new: true });
