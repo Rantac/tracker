@@ -450,10 +450,14 @@ export function EditEventModal({ isOpen, closeModal, onSave, event }: EditEventM
 
     useEffect(() => {
         if (event) {
+            const d = new Date(event.startTime);
+            const localISO = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+                .toISOString()
+                .slice(0, 16);
             setFields({
                 title: event.title,
                 description: event.description,
-                startTime: event.startTime.slice(0, 16),
+                startTime: localISO,
                 location: event.location,
                 status: event.status || 'planning',
             });
